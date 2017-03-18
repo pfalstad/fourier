@@ -121,8 +121,16 @@ public class Graphics {
 		  }
 	  }
 	  
+      public void drawOval(int x, int y, int width, int height) {
+          context.beginPath();
+          context.arc(x+width/2, y+width/2, width/2, 0, 2.0*3.14159);
+          context.closePath();
+          context.stroke();
+  }
+
 	  Font getFont(){
 		  return currentFont;
 	  }
 	  
+	  FontMetrics getFontMetrics() { return new FontMetrics(this); }
 }

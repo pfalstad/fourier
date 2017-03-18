@@ -46,13 +46,13 @@ import com.google.gwt.user.client.ui.VerticalPanel;
  */
 public class Applets implements EntryPoint {
 
-	static RippleSim ripsim;
+	static DFilterSim ripsim;
 	/**
 	 * This is the entry point method.
 	 */
 	public void onModuleLoad() {
 
-		ripsim = new RippleSim();
+		ripsim = new DFilterSim();
 		ripsim.init();
 
 		    Window.addResizeHandler(new ResizeHandler() {

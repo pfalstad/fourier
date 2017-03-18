@@ -31,7 +31,7 @@ public class MyCommand implements Command {
 	}
 	
 	public void execute() {
-		RippleSim.theSim.menuPerformed(menuName, itemName);
+		DFilterSim.theSim.menuPerformed(menuName, itemName);
 	}
 
 }

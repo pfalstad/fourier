@@ -295,5 +295,6 @@ public class Scrollbar extends  Composite implements
 	public HandlerRegistration addClickHandler(ClickHandler handler) {
 		 return addDomHandler(handler, ClickEvent.getType());
 	}
-	
+
+	void setMaximum(int mx) { max = mx; }
 }
