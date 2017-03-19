@@ -260,15 +260,15 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 	static native void passSimulator() /*-{
 		$doc.passSimulator(this);
 		
-		this.process = function(lo, ro) {
-			@com.falstad.dfilter.client.DFilterSim::process(*)(lo, ro);
+		this.process = function(li, ri, lo, ro) {
+			@com.falstad.dfilter.client.DFilterSim::process(*)(li, ri, lo, ro);
 		}
 	}-*/;
 
-	static void process(JsArrayNumber left, JsArrayNumber right) {
+    static void process(JsArrayNumber leftIn, JsArrayNumber rightIn, JsArrayNumber leftOut, JsArrayNumber rightOut) {
 		PlayThread playThread = DFilterSim.theSim.playThread;
 		if (playThread != null)
-			playThread.process(left, right);
+			playThread.process(leftIn, rightIn, leftOut, rightOut);
 	}
 	
 	static native void startSound() /*-{
@@ -279,11 +279,17 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 		stopSound();
 	}-*/;
 
+	static native void loadMp3(String f) /*-{
+		loadMp3(f);
+	}-*/;
+	
 	Frame iFrame;
 	
 	public void init() {
 		theSim = this;
         mp3List = new String[20];
+        mp3List[0] = "file-tory.mp3";
+        mp3List[1] = "file-light.mp3";
 		
         QueryParameters qp = new QueryParameters();
         
@@ -341,7 +347,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         m.addItem(impulseCheckItem  = getCheckItem("Impulse Response", true));
         m.addItem(stepCheckItem     = getCheckItem("Step Response", false));
         m.addSeparator();
-        m.addItem(logFreqCheckItem = getCheckItem("Log Frequency Scale", false));
+        m.addItem(logFreqCheckItem = getCheckItem("Log Frequency Scale", true));
         m.addItem(allWaveformCheckItem = getCheckItem("Show Entire Waveform", false));
         m.addItem(ferrisCheckItem = getCheckItem("Ferris Plot", false));
         // this doesn't fully work when turned off
@@ -353,7 +359,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         RootLayoutPanel.get().add(layoutPanel);
 
         soundCheck = new Checkbox("Sound On");
-        soundCheck.setState(true);
+        soundCheck.setState(false);
         soundCheck.addValueChangeHandler(this);
         verticalPanel.add(soundCheck);
 
@@ -440,8 +446,8 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         rateChooser.add("Sampling Rate = 22050");
         rateChooser.add("Sampling Rate = 32000");
         rateChooser.add("Sampling Rate = 44100");
-        rateChooser.select(3);
-        sampleRate = 22050;
+        rateChooser.select(5);
+        sampleRate = 44100;
         rateChooser.addChangeHandler(this);
 
         auxLabels = new Label[5];
@@ -665,11 +671,23 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 
     long lastTime;
     double minlog, logrange;
-    
 
+    void startPlayThread() {
+        if (playThread == null && !unstable && soundCheck.getState()) {
+            playThread = new PlayThread();
+            playThread.start();
+        }
+    }
+
+    Font font;
+    
     public void updateRipple() {
 		Graphics g=new Graphics(backcontext);
-		
+	
+		if (font == null)
+			font = new Font("SansSerif", 0, 15);
+		g.setFont(font);
+
 	    g.setColor(Color.black);
 		g.fillRect(0, 0, g.context.getCanvas().getWidth(), g.context.getCanvas().getHeight());
 		g.setColor(Color.white);
@@ -681,11 +699,6 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
                 playThread.setFilter(f);
             filterChanged = true;
             unstable = false;
-        }
-        
-        if (playThread == null && !unstable && soundCheck.getState()) {
-            playThread = new PlayThread();
-            playThread.start();
         }
         
         if (displayCheck.getState())
@@ -1110,10 +1123,10 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
             
             int ox = -1, oy = -1;
             double bufmult = 1./(spectrumBuf.length/2);
-            if (logAmpCheckItem.getState())
+/*            if (logAmpCheckItem.getState())
                 bufmult /= 65536;
             else
-                bufmult /= 768;
+                bufmult /= 768;*/
             bufmult *= bufmult;
 
             double specArray[] = new double[spectrumView.width];
@@ -1340,7 +1353,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         case 5:  wform = new PeriodicNoiseWaveform(); break;
         case 6:  wform = new SweepWaveform(); break;
         case 7:  wform = new ImpulseWaveform(); break;
-//        default: wform = new Mp3Waveform(ic-8); break;
+        default: wform = new Mp3Waveform(ic-8); break;
         }
         return wform;
     }
@@ -1492,6 +1505,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
             handleResize();
         else
             setupFilter();
+        startPlayThread();
     }
 
 	@Override

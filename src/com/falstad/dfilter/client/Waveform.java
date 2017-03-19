@@ -12,7 +12,8 @@ public abstract class Waveform {
     abstract int getData();
     int getChannels() { return 2; }
     void getBuffer() {
-        buffer = new short[DFilterSim.getPower2(sim.sampleRate/12)*getChannels()];
+//        buffer = new short[DFilterSim.getPower2(sim.sampleRate/12)*getChannels()];
+    	buffer = new short[2048*getChannels()];
     }
     String getInputText() { return "Input Frequency"; }
     boolean needsFrequency() { return true; }

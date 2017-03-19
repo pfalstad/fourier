@@ -18,6 +18,9 @@ public class PlayThread {
     int spectrumOffset, spectrumLen;
     DFilterSim sim;
     static final double pi = Math.PI; 
+    boolean maxGain = true;
+    boolean useConvolve = false;
+    int gainCounter = 0;
 
     PlayThread() {
     	shutdownRequested = false;
@@ -58,14 +61,20 @@ public class PlayThread {
 //        sim.playThread = null;
     }
 
-    void process(JsArrayNumber left, JsArrayNumber right) {
-    	int i;
+    void process(JsArrayNumber leftIn, JsArrayNumber rightIn, JsArrayNumber leftOut, JsArrayNumber rightOut) {
+    	int i = inbp;
+    	int i2;
+		for (i2 = 0; i2 != leftIn.length(); i2++) {
+			fbufLi[i] = leftIn.get(i2);
+			fbufRi[i] = rightIn.get(i2);
+            i = (i+1) & fbufmask;
+		}
     	loop();
     	// TODO don't assume that left, right are same size as saveBufL
     	if (saveBufL != null) {
     		for (i = 0; i != saveBufL.length; i++) {
-    			left.set (i, saveBufL[i]);
-    			right.set(i, saveBufR[i]);
+    			leftOut.set (i, saveBufL[i]);
+    			rightOut.set(i, saveBufR[i]);
     		}
 //    		sim.console("process " + left.length() + " " + saveBufL.length);
     	}
@@ -94,12 +103,7 @@ public class PlayThread {
     }
     
     void loop() {
-        int gainCounter = 0;
-        boolean maxGain = true;
-        boolean useConvolve = false;
         int ss = (stereo) ? 2 : 1;
-
-//        ob = new byte[16384];
         int shiftCtr = 0;
         
         if (!sim.soundCheck.getState())
@@ -108,11 +112,12 @@ public class PlayThread {
         	
             //System.out.println("nf " + newFilter + " " +(inbp-outbp));
             if (newFilter != null) {
+            	sim.console("newfilter");
                 gainCounter = 0;
                 maxGain = true;
-//                if (wform instanceof SweepWaveform ||
-//                    wform instanceof SineWaveform)
-//                    maxGain = false;
+                if (wform instanceof SweepWaveform ||
+                    wform instanceof SineWaveform)
+                    maxGain = false;
                 outputGain = 1;
                 // we avoid doing this unless necessary because it sounds bad
                 if (filt == null || filt.getLength() != newFilter.getLength())
@@ -129,24 +134,32 @@ public class PlayThread {
                 return;
             short ib[] = wform.buffer;
             
-            int i2;
+            useConvolve = false; // TODO make this true?
+
             int i = inbp;
-            for (i2 = 0; i2 < length; i2 += ss) {
-                fbufLi[i] = ib[i2];
-                i = (i+1) & fbufmask;
+            int i2;
+            int sampleCount = 2048;
+            if (!(wform instanceof Mp3Waveform)) {
+            	double mult = 1/32767.;
+            	for (i2 = 0; i2 < length; i2 += ss) {
+            		fbufLi[i] = ib[i2]*mult;
+            		i = (i+1) & fbufmask;
+            	}
+            	i = inbp;
+            	if (stereo) {
+            		for (i2 = 0; i2 < length; i2 += 2) {
+            			fbufRi[i] = ib[i2+1]*mult;
+            			i = (i+1) & fbufmask;
+            		}
+            	} else {
+            		for (i2 = 0; i2 < length; i2++) {
+            			fbufRi[i] = fbufLi[i];
+            			i = (i+1) & fbufmask;
+            		}
+            	}
+//            	sampleCount = length/ss;
             }
-            i = inbp;
-            if (stereo) {
-                for (i2 = 0; i2 < length; i2 += 2) {
-                    fbufRi[i] = ib[i2+1];
-                    i = (i+1) & fbufmask;
-                }
-            } else {
-                for (i2 = 0; i2 < length; i2++) {
-                    fbufRi[i] = fbufLi[i];
-                    i = (i+1) & fbufmask;
-                }
-            }
+            
             if (sim.shiftSpectrumCheck.getState()) {
                 double shiftFreq = sim.shiftFreqBar.getValue()*pi/1000.;
                 if (shiftFreq > pi)
@@ -160,7 +173,6 @@ public class PlayThread {
                 }
             }
 
-            int sampleCount = length/ss;
             if (useConvolve)
                 doConvolveFilter(sampleCount, maxGain);
             else {
