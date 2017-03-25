@@ -201,6 +201,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 	String versionString = "1.0";
 	static DFilterSim theSim;
     NumberFormat showFormat;
+    int customMp3Index;
     String mp3List[];
     String mp3Error;
     Complex customPoles[], customZeros[];
@@ -279,17 +280,32 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 		stopSound();
 	}-*/;
 
-	static native void loadMp3(String f) /*-{
-		loadMp3(f);
+	static native void loadAudioFile(String f) /*-{
+		loadAudioFile(f);
+	}-*/;
+
+	static native void loadAudioData(String d) /*-{
+		loadAudioData(d);
+	}-*/;
+
+	static native int getSampleRate() /*-{
+		return getSampleRate();
 	}-*/;
 	
 	Frame iFrame;
+    LoadFile loadFileInput;
 	
 	public void init() {
 		theSim = this;
-        mp3List = new String[20];
-        mp3List[0] = "file-tory.mp3";
-        mp3List[1] = "file-light.mp3";
+        mp3List = new String[6];
+        mp3List[0] = "speech.mp3";
+        mp3List[1] = "piano1.mp3";
+        mp3List[2] = "piano2.mp3";
+        mp3List[3] = "developers.mp3";
+        mp3List[4] = "robotron.mp3";
+        mp3List[5] = "arabian.mp3";
+        mp3List[6] = null;
+        customMp3Index = 6;
 		
         QueryParameters qp = new QueryParameters();
         
@@ -347,7 +363,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         m.addItem(impulseCheckItem  = getCheckItem("Impulse Response", true));
         m.addItem(stepCheckItem     = getCheckItem("Step Response", false));
         m.addSeparator();
-        m.addItem(logFreqCheckItem = getCheckItem("Log Frequency Scale", true));
+        m.addItem(logFreqCheckItem = getCheckItem("Log Frequency Scale", false));
         m.addItem(allWaveformCheckItem = getCheckItem("Show Entire Waveform", false));
         m.addItem(ferrisCheckItem = getCheckItem("Ferris Plot", false));
         // this doesn't fully work when turned off
@@ -386,8 +402,12 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         inputChooser.add("Input = Impulses");
         for (i = 0; mp3List[i] != null; i++)
             inputChooser.add("Input = " + mp3List[i]);
+        inputChooser.add("Input = Custom File");
         inputChooser.addChangeHandler(this);
         
+        if (LoadFile.isSupported())
+            verticalPanel.add(loadFileInput = new LoadFile(this));
+
         verticalPanel.add(filterChooser = new Choice());
         filterChooser.add("Filter = FIR Low-pass");
         filterChooser.add("Filter = FIR High-pass");
@@ -439,6 +459,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         windowChooser.addChangeHandler(this);
         windowChooser.select(1);
         
+        /*
         verticalPanel.add(rateChooser = new Choice());
         rateChooser.add("Sampling Rate = 8000");
         rateChooser.add("Sampling Rate = 11025");
@@ -447,9 +468,10 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         rateChooser.add("Sampling Rate = 32000");
         rateChooser.add("Sampling Rate = 44100");
         rateChooser.select(5);
-        sampleRate = 44100;
         rateChooser.addChangeHandler(this);
-
+*/
+        sampleRate = 44100;
+        
         auxLabels = new Label[5];
         auxBars = new Scrollbar[5];
         for (i = 0; i != 5; i++) {
@@ -460,7 +482,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         }
 
         verticalPanel.add(inputLabel = new Label("Input Frequency"));
-        verticalPanel.add(inputBar = new Scrollbar(Scrollbar.HORIZONTAL, 40, 1, 1, 999,
+        verticalPanel.add(inputBar = new Scrollbar(Scrollbar.HORIZONTAL, 200, 1, 1, 9999,
     			new Command() {
     		public void execute() { scrollbarMoved(); } }));
 
@@ -573,6 +595,17 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         return mi;
     }
 
+    void createNewLoadFile() {
+        // This is a hack to fix what IMHO is a bug in the <INPUT FILE element
+        // reloading the same file doesn't create a change event so importing the same file twice
+        // doesn't work unless you destroy the original input element and replace it with a new one
+        int idx=verticalPanel.getWidgetIndex(loadFileInput);
+        LoadFile newlf=new LoadFile(this);
+        verticalPanel.insert(newlf, idx);
+        verticalPanel.remove(idx+1);
+        loadFileInput=newlf;
+    }
+
     static int getPower2(int n) {
         int o = 2;
         while (o < n)
@@ -676,6 +709,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         if (playThread == null && !unstable && soundCheck.getState()) {
             playThread = new PlayThread();
             playThread.start();
+            sampleRate = getSampleRate();
         }
     }
 
@@ -853,7 +887,16 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
                 g.drawLine(cx, cy-ph, cx, cy+ph);
                 g.drawLine(cx-ph, cy, cx+ph, cy);
                 Complex c1 = new Complex();
-                for (i = 0; i != polect; i++) {
+                
+                // if there are large numbers of poles/zeroes, it can take too long to draw them all, so
+                // skip some
+                int pstep = 1;
+                if (polect > 400)
+                	pstep = polect/200;
+                if (zeroct > 400)
+                	pstep = zeroct/200;
+                
+                for (i = 0; i < polect; i += pstep) {
                     filterType.getPole(i, c1);
                     g.setColor(i == selectedPole ? Color.yellow : Color.white);
                     int c1x = cx+(int) (pw*c1.re);
@@ -861,7 +904,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
                     g.drawLine(c1x-3, c1y-3, c1x+3, c1y+3);
                     g.drawLine(c1x-3, c1y+3, c1x+3, c1y-3);
                 }
-                for (i = 0; i != zeroct; i++) {
+                for (i = 0; i < zeroct; i += pstep) {
                     filterType.getZero(i, c1);
                     g.setColor(i == selectedZero ? Color.yellow : Color.white);
                     int c1x = cx+(int) (pw*c1.re);
@@ -1358,13 +1401,22 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         return wform;
     }
 
+    void loadedFileData(String s) {
+//    	console("loadedfiledata " + mp3List.length);
+    	inputChooser.select(8+customMp3Index);
+    	mp3List[customMp3Index] = s;
+    	if (playThread != null)
+    		restartPlayThread();
+//    	loadAudioFile(s);
+    }
+    
     void scrollbarMoved() {
     	setupFilter();
     	setInputW();
     }
     
     void setInputW() {
-        inputW = pi*inputBar.getValue()/1000.;
+        inputW = pi*inputBar.getValue()/10000.;
     }
     
     public void menuPerformed(String menu, String item) {
@@ -1428,7 +1480,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
             if (f < 0)
                 return;
             inputW = 2*pi*f;
-            inputBar.setValue((int) (2000*f));
+            inputBar.setValue((int) (20000*f));
         }
         if (selection == SELECT_POLES && filterType instanceof CustomIIRFilter) {
             editCustomIIRFilter(e);
@@ -1445,6 +1497,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         } else {
             // need to draw a line from old x,y to new x,y and
             // call editFuncPoint for each point on that line.  yuck.
+        	console("edit custom " + x + " " +y+" " + dragX + " " + dragY);
             int x1 = (x < dragX) ? x : dragX;
             int y1 = (x < dragX) ? y : dragY;
             int x2 = (x > dragX) ? x : dragX;
@@ -1508,18 +1561,23 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         startPlayThread();
     }
 
+    void restartPlayThread() {
+        if (playThread != null) {
+            playThread.requestShutdown();
+            startPlayThread();
+        }
+    }
+    
 	@Override
 	public void onChange(ChangeEvent e) {
         filterChanged = true;
         if (e.getSource() == inputChooser) {
-          if (playThread != null)
-              playThread.requestShutdown();
+        	restartPlayThread();
           setInputLabel();
       }
       if ((e.getSource()) == rateChooser) {
-          if (playThread != null)
-              playThread.requestShutdown();
-          inputW *= sampleRate;
+      		restartPlayThread();
+             inputW *= sampleRate;
           switch (rateChooser.getSelectedIndex()) {
           case 0: sampleRate = 8000; break;
           case 1: sampleRate = 11025; break;
@@ -1549,6 +1607,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
     }
     
     void setSampleRate(int r) {
+    	/*
         int x = 0;
         switch (r) {
         case 8000:  x = 0; break;
@@ -1559,6 +1618,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         case 44100: x = 5; break;
         }
         rateChooser.select(x);
+        */
         sampleRate = r;
     }
     
@@ -1575,8 +1635,12 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 	}
 	
 	void doMouseMove(MouseEvent<?> e) {
-        dragX = mouseX = e.getX();
-        dragY = mouseY = e.getY();
+        mouseX = e.getX();
+        mouseY = e.getY();
+        if (!dragging) {
+        	dragX = mouseX;
+        	dragY = mouseY;
+        }
         if (respView != null && respView.contains(e.getX(), e.getY()))
             selection = SELECT_RESPONSE;
         if (spectrumView != null && spectrumView.contains(e.getX(), e.getY()))

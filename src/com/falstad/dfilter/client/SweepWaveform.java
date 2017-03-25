@@ -19,10 +19,10 @@ public class SweepWaveform extends Waveform {
         double minspeed = 1/(sim.sampleRate*16);
         if (sim.logFreqCheckItem.getState())
             nmul = Math.pow(2*pi/startOmega,
-                2*(minspeed+(maxspeed-minspeed)*sim.inputBar.getValue()/1000.));
+                2*(minspeed+(maxspeed-minspeed)*sim.inputBar.getValue()/10000.));
         else
             nadd = (2*pi-startOmega)*
-                (minspeed+(maxspeed-minspeed)*sim.inputBar.getValue()/1000.);
+                (minspeed+(maxspeed-minspeed)*sim.inputBar.getValue()/10000.);
         for (i = 0; i != buffer.length; i++) {
             ix++;
             t += omega;

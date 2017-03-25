@@ -10,7 +10,7 @@ public     class ImpulseWaveform extends Waveform {
     }
     int getData() {
         int i;
-        int ww = DFilterSim.theSim.inputBar.getValue()/51+1;
+        int ww = DFilterSim.theSim.inputBar.getValue()/510+1;
         int period = 10000/ww;
         for (i = 0; i != buffer.length; i++) {
             short q = 0;

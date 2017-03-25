@@ -5,7 +5,7 @@ public class DelayFilter extends CombFilter {
         super(1);
     }
     void getResponse(double w, Complex c) {
-        if (n > 212)
+        if (n > 500) // 212)
             c.set(1);
         else
             super.getResponse(w, c);

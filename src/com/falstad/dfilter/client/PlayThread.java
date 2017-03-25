@@ -81,7 +81,7 @@ public class PlayThread {
     }
     
     void initLoop() {
-        sim.rateChooser.setEnabled(true);
+//        sim.rateChooser.setEnabled(true);
         wform = sim.getWaveformObject();
         sim.mp3Error = null;
         sim.unstable = false;
@@ -191,7 +191,7 @@ public class PlayThread {
                 spectCt -= spectrumLen;
             }
             gainCounter += sampleCount;
-            if (maxGain && gainCounter >= sim.sampleRate) {
+            if (maxGain && gainCounter >= sim.sampleRate/10) {
                 gainCounter = 0;
                 maxGain = false;
                 //System.out.println("gain ctr up " + outputGain);
@@ -319,13 +319,15 @@ public class PlayThread {
             if (max > 1) {
                 //System.out.println("max = " + max);
                 outputGain *= 1./max;
-                if (outputGain < 1e-10 || Double.isInfinite(outputGain)) {
+                if (outputGain < 1e-10 || Double.isInfinite(outputGain) ||
+                		Double.isInfinite(max)) {
                     sim.unstable = true;
                     break;
                 }
                 continue;
             } else if (maxGain && max < .7) {
-                if (max == 0) {
+            	// avoid insanely high gain that might cause overflow
+                if (max < 1e-20) {
                     if (outputGain == 1)
                         break;
                     outputGain = 1;

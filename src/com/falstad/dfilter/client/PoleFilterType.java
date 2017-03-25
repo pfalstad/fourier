@@ -91,6 +91,7 @@ public abstract class PoleFilterType extends IIRFilterType {
         else
             c1.set(-1);
     }
+
     void setupLowPass() {
         wc = auxBars[0].getValue() * pi/1000.;
         n = auxBars[1].getValue();  

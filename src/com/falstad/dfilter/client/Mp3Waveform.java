@@ -7,7 +7,7 @@ public class Mp3Waveform extends Waveform {
 
     boolean start() {
         getBuffer();
-        DFilterSim.loadMp3(fileName);
+        DFilterSim.loadAudioFile(fileName);
         return true;
     }
 

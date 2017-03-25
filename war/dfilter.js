@@ -16,15 +16,16 @@ function ScriptSample() {
 	context = new (window.AudioContext || window.webkitAudioContext)();
 
 	this.play = function() {
-		console.log("this = " +this);
+		if (this.source != null) debugger;
+//		console.log("this = " +this);
 		var source = context.createBufferSource();
 		this.source = source;
 //		source.buffer = this.buffer;
 //		console.log("got buffer " + source.buffer + " " + source.buffer.length);
 
 		// Hook it up to a ScriptProcessorNode.
-		console.log("bufsize = " + this.BUFFER_SIZE);
-		console.log("samplgrate = " + context.sampleRate);
+//		console.log("bufsize = " + this.BUFFER_SIZE);
+//		console.log("sampling rate = " + context.sampleRate);
 		var processor = context.createScriptProcessor(this.BUFFER_SIZE);
 		processor.onaudioprocess = this.onProcess;
 
@@ -32,15 +33,17 @@ function ScriptSample() {
 		source.loop = true;
 		processor.connect(context.destination);
 
-		console.log('start');
+//		console.log('start');
 		source[source.start ? 'start': 'noteOn'](0);
 		this.source = source;
 		this.processor = processor;
 	};
 
 	this.stop = function() {
+//		console.log("this.stop");
 		try { this.source.stop(0); } catch (err) { }
 		try { this.processor.disconnect(context.destination); } catch (err) { }
+		this.source = null;
 	};
 
 	this.onProcess = function(e) {
@@ -52,6 +55,7 @@ function ScriptSample() {
 	};
 	
 	this.loadFile = function(f) {
+//		console.log("loadfile");
 		var request = new XMLHttpRequest();
 		request.open("GET", f, true);
 		request.responseType = "arraybuffer";
@@ -61,7 +65,7 @@ function ScriptSample() {
 			var audioData = request.response;
 
 			context.decodeAudioData(audioData, function(buffer) {
-				console.log("decode audio data " + buffer.length + " "+ loader.source);
+//				console.log("decode audio data " + buffer.length + " "+ loader.source);
 				loader.source.buffer = buffer;
 //				loader.buffer = buffer;
 				loader.source.start(0);
@@ -71,14 +75,28 @@ function ScriptSample() {
 		}
 		request.send();
 	}
+
+	this.loadData = function(audioData) {
+//		console.log("loaddata");
+		var loader = this;
+			this.source.stop(0);
+			context.decodeAudioData(audioData, function(buffer) {
+//				console.log("decode audio data " + buffer.length + " "+ loader.source);
+				loader.source.buffer = buffer;
+				loader.source.start(0);
+			},
+
+			function(e){ console.log("Error with decoding audio data" + e.err); });
+	}
 };
 
 document.passSimulator = function passSimulator (sim_) {
 	sim = sim_;
 	sample = new ScriptSample();
-	console.log("pass simulator " + sim);
+//	console.log("pass simulator " + sim);
 	sim.startSound = function() { sample.play(); }
 	sim.stopSound = function() { sample.stop(); }
-	sim.loadMp3 = function(f) { sample.loadFile(f); }
+	sim.loadAudioFile = function(f) { sample.stop(); /*sample.play();*/ sample.loadFile(f); }
+	sim.getSampleRate = function() { return context ? context.sampleRate : 0; }
 };
 

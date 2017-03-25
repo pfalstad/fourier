@@ -58,7 +58,7 @@ package com.falstad.dfilter.client;
             int j;
             int fi2 = bp, i20;
             double q = 0;
-
+            
             int i2;
             for (i2 = 0; i2 != count; i2++) {
                 fi2 = bp+i2;

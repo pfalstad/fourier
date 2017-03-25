@@ -243,7 +243,7 @@ public class Scrollbar extends  Composite implements
 	public void onMouseWheel(MouseWheelEvent e) {
 		e.preventDefault();
 		if (enabled)
-			setValue(val+e.getDeltaY()/3);
+			setValueByUser(val+e.getDeltaY()/3);
 	}
 	
 	public void onClick(ClickEvent e) {
@@ -269,6 +269,12 @@ public class Scrollbar extends  Composite implements
 		return val;
 	}
 	
+	void setValueByUser(int i) {
+		setValue(i);
+		if (command!=null)
+			command.execute();
+	}
+	
 	public void setValue(int i){
 		if (i<min)
 			i=min;
@@ -276,8 +282,6 @@ public class Scrollbar extends  Composite implements
 			i=max;
 		val =i;
 		draw();
-		if (command!=null)
-			command.execute();
 	}
 	
 	public void enable() {
