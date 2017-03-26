@@ -512,6 +512,11 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
     			new Command() {
     		public void execute() { scrollbarMoved(); } }));
 
+    	verticalPanel.add(iFrame = new Frame("iframe.html"));
+    	iFrame.setWidth(verticalPanelWidth+"px");
+    	iFrame.setHeight("100 px");
+    	iFrame.getElement().setAttribute("scrolling", "no");
+
         random = new Random();
         setInputLabel();
         reinit();
