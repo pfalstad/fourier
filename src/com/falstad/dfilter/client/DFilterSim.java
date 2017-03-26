@@ -186,6 +186,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 
 	public boolean useFrame;
 	CanvasPixelArray pixels;
+	ImageData imageData;
 	
 	DockLayoutPanel layoutPanel;
 	VerticalPanel verticalPanel;
@@ -280,6 +281,10 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 		stopSound();
 	}-*/;
 
+	static native void debugger() /*-{
+		debugger;
+	}-*/;
+
 	static native void loadAudioFile(String f) /*-{
 		loadAudioFile(f);
 	}-*/;
@@ -354,7 +359,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         MenuBar mb = new MenuBar();
         MenuBar m = new MenuBar(true);
         m.addItem(exitItem = getMenuItem("Exit", new MyCommand("file", "exit")));
-        mb.addItem("File", m);
+//        mb.addItem("File", m);
         m = new MenuBar(true);
         m.addItem(freqCheckItem = getCheckItem("Frequency Response", true));
         m.addItem(phaseCheckItem = getCheckItem("Phase Response", false));
@@ -382,16 +387,19 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
         displayCheck = new Checkbox("Stop Display");
         displayCheck.addValueChangeHandler(this);
         verticalPanel.add(displayCheck);
+        displayCheck.addStyleName("topSpace");
 
         shiftSpectrumCheck = new Checkbox("Shift Spectrum");
         shiftSpectrumCheck.addValueChangeHandler(this);
         verticalPanel.add(shiftSpectrumCheck);
+        shiftSpectrumCheck.addStyleName("topSpace");
 
         /*woofCheck = new Checkbox("Woof");
         woofCheck.addItemListener(this);
         add(woofCheck);*/
 
         verticalPanel.add(inputChooser = new Choice());
+        inputChooser.addStyleName("topSpace");
         inputChooser.add("Input = Noise");
         inputChooser.add("Input = Sine Wave");
         inputChooser.add("Input = Sawtooth");
@@ -589,23 +597,20 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
     }
 
     CheckboxMenuItem getCheckItem(String s, boolean b) {
-        CheckboxMenuItem mi = new CheckboxMenuItem(s);
+    	Command cmd = new Command() {
+    		public void execute() { DFilterSim.theSim.checkMenuItemClicked(); }
+    	};
+        CheckboxMenuItem mi = new CheckboxMenuItem(s, cmd);
         mi.setState(b);
-//        mi.addItemListener(this);
+//        mi.addItemListener(this)
         return mi;
     }
 
-    void createNewLoadFile() {
-        // This is a hack to fix what IMHO is a bug in the <INPUT FILE element
-        // reloading the same file doesn't create a change event so importing the same file twice
-        // doesn't work unless you destroy the original input element and replace it with a new one
-        int idx=verticalPanel.getWidgetIndex(loadFileInput);
-        LoadFile newlf=new LoadFile(this);
-        verticalPanel.insert(newlf, idx);
-        verticalPanel.remove(idx+1);
-        loadFileInput=newlf;
+    void checkMenuItemClicked() {
+        filterChanged = true;
+        handleResize();
     }
-
+    
     static int getPower2(int n) {
         int o = 2;
         while (o < n)
@@ -681,19 +686,10 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
     }
 
     void getPoleBuffer() {
-        int i;
         pixels = null;
         if (pixels == null) {
-        	/*
-            pixels = new int[polesView.width*polesView.height];
-            for (i = 0; i != polesView.width*polesView.height; i++)
-                pixels[i] = 0xFF000000;
-            imageSource = new MemoryImageSource(polesView.width, polesView.height,
-                                                pixels, 0, polesView.width);
-            imageSource.setAnimated(true);
-            imageSource.setFullBufferUpdates(true);
-            memimage = cv.createImage(imageSource);
-            */
+            imageData = backcontext.createImageData(polesView.width, polesView.height);
+            pixels = imageData.getData();
         }
     }
     
@@ -939,17 +935,14 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
                             if (p >= 2*pi)
                                 p -= 2*pi;
                             PhaseColor pc = phaseColors[(int) (p*phaseColorCount/(2*pi))];
-                            /*
-                            pixels[ri+ii*polesView.width] = 0xFF000000 +
-                                0x10000*(int) (pc.r*cv+wv) +
-                                0x00100*(int) (pc.g*cv+wv) +
-                                0x00001*(int) (pc.b*cv+wv);
-                                */
+                            int i4 = (ri+ii*polesView.width)*4;
+                            pixels.set(i4+0, (int)(pc.r*cv+wv));
+                            pixels.set(i4+1, (int)(pc.g*cv+wv));
+                            pixels.set(i4+2, (int)(pc.b*cv+wv));
+                            pixels.set(i4+3, 255);
                         }
                 }
-//                if (imageSource != null)
-//                    imageSource.newPixels();
-//                g.drawImage(memimage, polesView.x, polesView.y, null);
+                backcontext.putImageData(imageData, polesView.x, polesView.y);
             }
         }
         if (poleInfoView != null) {

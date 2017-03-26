@@ -1,24 +1,23 @@
-/*
-    Copyright (C) 2017 by Paul Falstad
+/*    
+    Copyright (C) Paul Falstad and Iain Sharp
+    
+    This file is part of CircuitJS1.
 
-    This file is part of RippleGL.
-
-    RippleGL is free software: you can redistribute it and/or modify
+    CircuitJS1 is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 2 of the License, or
     (at your option) any later version.
 
-    RippleGL is distributed in the hope that it will be useful,
+    CircuitJS1 is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with RippleGL.  If not, see <http://www.gnu.org/licenses/>.
+    along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package com.falstad.dfilter.client;
-
 
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.user.client.ui.Composite;
@@ -26,7 +25,6 @@ import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
-import com.google.gwt.event.dom.client.HasClickHandlers;
 import com.google.gwt.event.dom.client.MouseDownHandler;
 import com.google.gwt.event.dom.client.MouseDownEvent;
 import com.google.gwt.event.dom.client.MouseMoveHandler;
@@ -38,17 +36,25 @@ import com.google.gwt.event.dom.client.MouseOutHandler;
 import com.google.gwt.event.dom.client.MouseOverEvent;
 import com.google.gwt.event.dom.client.MouseOverHandler;
 import com.google.gwt.user.client.Command;
+import com.google.gwt.user.client.Event;
 import com.google.gwt.core.client.GWT;
+import com.google.gwt.dom.client.CanvasElement;
+import com.google.gwt.dom.client.Touch;
 import com.google.gwt.event.dom.client.MouseWheelEvent;
-import com.google.gwt.event.dom.client.MouseWheelHandler;
-import com.google.gwt.event.shared.HandlerRegistration;
+ import com.google.gwt.event.dom.client.MouseWheelHandler;
+import com.google.gwt.event.dom.client.TouchCancelEvent;
+import com.google.gwt.event.dom.client.TouchCancelHandler;
+import com.google.gwt.event.dom.client.TouchEndEvent;
+import com.google.gwt.event.dom.client.TouchEndHandler;
+import com.google.gwt.event.dom.client.TouchMoveEvent;
+import com.google.gwt.event.dom.client.TouchMoveHandler;
+import com.google.gwt.event.dom.client.TouchStartEvent;
+import com.google.gwt.event.dom.client.TouchStartHandler;
 
 
 public class Scrollbar extends  Composite implements 
 	ClickHandler, MouseDownHandler, MouseMoveHandler, MouseUpHandler, MouseOutHandler, MouseOverHandler,
-	MouseWheelHandler, HasClickHandlers {
-	
-//	static final int width=166;
+	MouseWheelHandler, TouchStartHandler, TouchCancelHandler, TouchEndHandler, TouchMoveHandler {
 	
 	static int HORIZONTAL =1;
 	static int HMARGIN=2;
@@ -62,11 +68,10 @@ public class Scrollbar extends  Composite implements
 	int min;
 	int max;
 	int val;
-	private int width;
+	int width;
 	boolean dragging=false;
 	boolean enabled=true;
 	Command command=null;
-//	CircuitElm attachedElm=null;
 	
 	public Scrollbar(int orientation, int value, int visible, int minimum, int maximum) {
 		min=minimum;
@@ -75,7 +80,7 @@ public class Scrollbar extends  Composite implements
 		 pan = new VerticalPanel();
 		can = Canvas.createIfSupported();
 		width = 166;
-		can.setWidth((width)+" px");
+		can.setWidth(width+" px");
 		can.setHeight("40 px");
 		can.setCoordinateSpaceWidth(width);
 		can.setCoordinateSpaceHeight(SCROLLHEIGHT);
@@ -89,6 +94,13 @@ public class Scrollbar extends  Composite implements
 		can.addMouseOutHandler(this);
 		can.addMouseOverHandler(this);
 		can.addMouseWheelHandler(this);
+		
+		// our hack from CirSim doesn't work here so we have to handle touch events explicitly
+		can.addTouchStartHandler(this);
+		can.addTouchMoveHandler(this);
+		can.addTouchEndHandler(this);
+		can.addTouchCancelHandler(this);
+		
 		this.draw();
 		initWidget(pan);
 	}
@@ -97,23 +109,21 @@ public class Scrollbar extends  Composite implements
 			Command cmd) {
 		this(orientation,value,visible,minimum,maximum);
 		this.command=cmd;
-//		attachedElm=e;
 	}
 	
 //	public Scrollbar(int orientation, int value, int visible, int minimum, int maximum, Command cmd) {
 //		this(orientation, value, visible, minimum, maximum);
 //		this.command=cmd;
 //	}
-
-	void setWidth(int w) {
-		width = w;
-		can.setWidth((width)+" px");
-		can.setCoordinateSpaceWidth(width);
-		draw();
-	}
 	
+	   void setWidth(int w) {
+		           width = w;
+		           can.setWidth((width)+" px");
+		           can.setCoordinateSpaceWidth(width);
+		           draw();
+		   }
+
 	void draw() {
-		g.setFillStyle("#ffffff");
 		if (enabled)
 			g.setStrokeStyle("#000000");
 		else
@@ -137,9 +147,6 @@ public class Scrollbar extends  Composite implements
 		g.stroke();
 		double p=HMARGIN+SCROLLHEIGHT+BARMARGIN+((width-2*(HMARGIN+SCROLLHEIGHT+BARMARGIN))*((double)(val-min)))/(max-min);
 		if (enabled) {
-//			if (attachedElm!=null && attachedElm.needsHighlight())
-//				g.setStrokeStyle("cyan");
-//			else
 				g.setStrokeStyle("red");
 			g.beginPath();
 			g.moveTo(HMARGIN+SCROLLHEIGHT+BARMARGIN, SCROLLHEIGHT/2);
@@ -173,43 +180,57 @@ public class Scrollbar extends  Composite implements
 //		GWT.log("Down");
 		dragging=false;
 		e.preventDefault();
-		if (enabled){
-			if (e.getX()<HMARGIN+SCROLLHEIGHT ) {
-				if (val>min)
-					val--;
-			}
-			else {
-				if (e.getX()>width-HMARGIN-SCROLLHEIGHT ) {
-					if (val<max)
-						val++;
-				}
-				else {
-					val=calcValueFromPos(e.getX());	
-					dragging=true;}
-			}
-			draw();
-			if (command!=null)
-				command.execute();
+		doMouseDown(e.getX(), true);
+	}
+	
+	void doMouseDown(int x, boolean mouse) {
+	    if (enabled){
+		if (x < HMARGIN+SCROLLHEIGHT ) {
+		    if (val>min)
+			val--;
 		}
-		
+		else {
+		    if (x > width-HMARGIN-SCROLLHEIGHT ) {
+			if (val<max)
+			    val++;
+		    }
+		    else {
+			val=calcValueFromPos(x);	
+			dragging=true;
+			
+			// setCapture doesn't work on touch for some reason; touchend/touchmoved events
+			// don't get sent
+			if (mouse)
+			    Event.setCapture(can.getElement());
+		    }
+		}
+		draw();
+		if (command!=null)
+		    command.execute();
+	    }
 	}
 	
 	public void onMouseMove(MouseMoveEvent e){
 //		GWT.log("Move");
 		e.preventDefault();
-		if (enabled) {
-			if (dragging) {
-				val=calcValueFromPos(e.getX());	
-				draw();
-				if (command!=null)
-					command.execute();
-			}
+		doMouseMove(e.getX());
+	}
+	
+	void doMouseMove(int x) {
+	    if (enabled) {
+		if (dragging) {
+		    val=calcValueFromPos(x);	
+		    draw();
+		    if (command!=null)
+			command.execute();
 		}
+	    }
 	}
 	
 	public void onMouseUp(MouseUpEvent e){
 //		GWT.log("Up");
 		e.preventDefault();
+		Event.releaseCapture(can.getElement());
 		if (enabled && dragging) {
 			val=calcValueFromPos(e.getX());	
 			dragging=false;
@@ -222,22 +243,12 @@ public class Scrollbar extends  Composite implements
 	public void onMouseOut(MouseOutEvent e){
 //		GWT.log("Out");
 //		e.preventDefault();
-//		if (enabled && attachedElm!=null && attachedElm.isMouseElm())
-//			CircuitElm.sim.setMouseElm(null);
-		if (enabled && dragging) {
-			val=calcValueFromPos(e.getX());	
-			dragging=false;
-			draw();
-			if (command!=null)
-				command.execute();
-		}
-
+	    	if (dragging)
+	    	    return;
 	}
 	
 	public void onMouseOver(MouseOverEvent e){
-//		
-//		if (enabled && attachedElm!=null)
-//			 CircuitElm.sim.setMouseElm(attachedElm);
+		
 	}
 	
 	public void onMouseWheel(MouseWheelEvent e) {
@@ -254,7 +265,7 @@ public class Scrollbar extends  Composite implements
 //				val--;
 //		}
 //		else {
-//			if (e.getX()>CirSim.width-HMARGIN-SCROLLHEIGHT ) {
+//			if (e.getX()>CirSim.VERTICALPANELWIDTH-HMARGIN-SCROLLHEIGHT ) {
 //				if (val<max)
 //					val++;
 //			}
@@ -295,9 +306,36 @@ public class Scrollbar extends  Composite implements
 		draw();
 	}
 
-	@Override
-	public HandlerRegistration addClickHandler(ClickHandler handler) {
-		 return addDomHandler(handler, ClickEvent.getType());
+	public void onTouchMove(TouchMoveEvent e) {
+//	    GWT.log("touchmove");
+	    e.preventDefault();
+	    Touch t = e.getTouches().get(0);
+	    doMouseMove(t.getRelativeX(getElement()));
+	}
+
+	public void onTouchEnd(TouchEndEvent event) {
+//	    GWT.log("touchend");;
+	    event.preventDefault();
+	    if (enabled && dragging) {
+		dragging=false;
+		draw();
+		if (command!=null)
+		    command.execute();
+	    }
+	}
+
+	public void onTouchCancel(TouchCancelEvent event) {
+//	    GWT.log("touchcancel");;
+	    event.preventDefault();
+	    dragging = false;
+	}
+
+	public void onTouchStart(TouchStartEvent event) {
+//	    GWT.log("touchstart");
+	    event.preventDefault();
+	    dragging=false;
+	    Touch t = event.getTouches().get(0);
+	    doMouseDown(t.getRelativeX(getElement()), false);
 	}
 
 	void setMaximum(int mx) { max = mx; }
