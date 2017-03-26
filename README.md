@@ -1,4 +1,4 @@
-# ripplegl
+# dfilter
 DFilter, javascript version
 
 Source for http://www.falstad.com/dfilter/
