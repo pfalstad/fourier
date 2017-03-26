@@ -1,5 +1,6 @@
 package com.falstad.dfilter.client;
 
+// finite impulse response filter creator
 abstract public class FIRFilterType extends FilterType {
     double response[];
     void getResponse(double w, Complex c) {

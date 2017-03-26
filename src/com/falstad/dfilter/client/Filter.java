@@ -1,5 +1,8 @@
 package com.falstad.dfilter.client;
 
+// Filter class, created by a subclass of FilterType.
+// A Filter object doesn't change once created.  It is concerned with the details of executing a filter,
+// not filter design.
 public abstract class Filter {
     abstract void run(double inBuf[], double outBuf[], int bp, int mask, int count, double x[]);
     abstract void evalTransfer(Complex c);

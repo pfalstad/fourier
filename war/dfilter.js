@@ -1,31 +1,26 @@
 var sim;
 
-var sample;
+var player;
 var context;
 var NOISE_FACTOR = .5;
 
-function ScriptSample() {
+function Player() {
 	this.BUFFER_SIZE = 2048;
 
 	this.isPlaying = false;
 	this.isNoise = true;
 	this.isChannelFlip = false;
 	
-	// Load a sound.
-	//loadSounds(this, { buffer: 'chrono.mp3' });
 	context = new (window.AudioContext || window.webkitAudioContext)();
 
 	this.play = function() {
 		if (this.source != null) debugger;
-//		console.log("this = " +this);
+		
+		// create source
 		var source = context.createBufferSource();
 		this.source = source;
-//		source.buffer = this.buffer;
-//		console.log("got buffer " + source.buffer + " " + source.buffer.length);
 
 		// Hook it up to a ScriptProcessorNode.
-//		console.log("bufsize = " + this.BUFFER_SIZE);
-//		console.log("sampling rate = " + context.sampleRate);
 		var processor = context.createScriptProcessor(this.BUFFER_SIZE);
 		processor.onaudioprocess = this.onProcess;
 
@@ -33,14 +28,12 @@ function ScriptSample() {
 		source.loop = true;
 		processor.connect(context.destination);
 
-//		console.log('start');
 		source[source.start ? 'start': 'noteOn'](0);
 		this.source = source;
 		this.processor = processor;
 	};
 
 	this.stop = function() {
-//		console.log("this.stop");
 		try { this.source.stop(0); } catch (err) { }
 		try { this.processor.disconnect(context.destination); } catch (err) { }
 		this.source = null;
@@ -51,11 +44,12 @@ function ScriptSample() {
 		var rightIn = e.inputBuffer.getChannelData(1);
 		var leftOut = e.outputBuffer.getChannelData(0);
 		var rightOut = e.outputBuffer.getChannelData(1);
+		
+		// pass buffer to GWT code for processing
 		sim.process(leftIn, rightIn, leftOut, rightOut);
 	};
 	
 	this.loadFile = function(f) {
-//		console.log("loadfile");
 		var request = new XMLHttpRequest();
 		request.open("GET", f, true);
 		request.responseType = "arraybuffer";
@@ -65,9 +59,8 @@ function ScriptSample() {
 			var audioData = request.response;
 
 			context.decodeAudioData(audioData, function(buffer) {
-//				console.log("decode audio data " + buffer.length + " "+ loader.source);
 				loader.source.buffer = buffer;
-//				loader.buffer = buffer;
+				// start player
 				loader.source.start(0);
 			},
 
@@ -75,28 +68,14 @@ function ScriptSample() {
 		}
 		request.send();
 	}
-
-	this.loadData = function(audioData) {
-//		console.log("loaddata");
-		var loader = this;
-			this.source.stop(0);
-			context.decodeAudioData(audioData, function(buffer) {
-//				console.log("decode audio data " + buffer.length + " "+ loader.source);
-				loader.source.buffer = buffer;
-				loader.source.start(0);
-			},
-
-			function(e){ console.log("Error with decoding audio data" + e.err); });
-	}
 };
 
+// install callbacks for GWT
 document.passSimulator = function passSimulator (sim_) {
 	sim = sim_;
-	sample = new ScriptSample();
-//	console.log("pass simulator " + sim);
-	sim.startSound = function() { sample.play(); }
-	sim.stopSound = function() { sample.stop(); }
-	sim.loadAudioFile = function(f) { sample.stop(); /*sample.play();*/ sample.loadFile(f); }
+	player = new Player();
+	sim.startSound = function() { player.play(); }
+	sim.stopSound = function() { player.stop(); }
+	sim.loadAudioFile = function(f) { player.stop(); player.loadFile(f); }
 	sim.getSampleRate = function() { return context ? context.sampleRate : 0; }
 };
-

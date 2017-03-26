@@ -1,5 +1,6 @@
 package com.falstad.dfilter.client;
 
+// IIR filter that uses state for efficiency in processing
 public class CascadeFilter extends Filter {
     CascadeFilter(int s) {
         size = s;

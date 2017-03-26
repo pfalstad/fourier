@@ -1,5 +1,6 @@
 package com.falstad.dfilter.client;
 
+// infinite impulse response filter (using feedback)
 public abstract class IIRFilterType extends FilterType {
     double response[];
     void getResponse(double w, Complex c) {
@@ -100,6 +101,7 @@ public abstract class IIRFilterType extends FilterType {
         //System.out.println(f.aList.length + " " + f.bList.length + " XX");
     }
     
+    // create cascade filter using poles/zeroes
     Filter genFilter() {
         int n = getPoleCount();
         CascadeFilter f = new CascadeFilter((n+1)/2);

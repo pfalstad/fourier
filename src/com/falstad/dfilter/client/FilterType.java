@@ -2,6 +2,7 @@ package com.falstad.dfilter.client;
 
 import com.google.gwt.user.client.ui.Label;
 
+// filter type; designs and creates Filter objects for a particular type of filter.
 public abstract class FilterType {
 	Scrollbar auxBars[];
 	Label auxLabels[];

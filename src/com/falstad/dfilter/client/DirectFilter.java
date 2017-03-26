@@ -1,15 +1,20 @@
 package com.falstad.dfilter.client;
 
+// a filter that's directly evaluated at each point, not using state.  This could be FIR or IIR
  public class DirectFilter extends Filter {
-        double aList[], bList[];
-        int nList[];
+        double aList[]; // feedforward coefficients
+        double bList[]; // feedback coefficients
+        int nList[];    // offsets (typically 0, 1, 2, ..., n-1)
         DirectFilter() {
             aList = new double[] { 1 };
             bList = null;
             nList = new int[] { 0 };
         }
         int getLength() { return aList.length; }
+        
+        // use FFT convolution?
         boolean useConvolve() { return bList == null && aList.length > 25; }
+        
         void dump() {
             System.out.print("a "); dump(aList);
             if (bList != null) {
