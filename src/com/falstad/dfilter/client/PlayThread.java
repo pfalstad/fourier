@@ -3,6 +3,7 @@ package com.falstad.dfilter.client;
 import com.google.gwt.core.client.JsArray;
 import com.google.gwt.core.client.JsArrayNumber;
 
+// this used to be a thread in the java version, but now it's not
 public class PlayThread {
     Waveform wform;
     boolean shutdownRequested;
@@ -27,7 +28,7 @@ public class PlayThread {
     	sim = DFilterSim.theSim;
     }
     void requestShutdown() {
-    	sim.console("requestshutdown");
+//    	sim.console("requestshutdown");
     	shutdownRequested = true;
     	sim.playThread = null;
     	DFilterSim.stopSound();
@@ -46,6 +47,7 @@ public class PlayThread {
 
     int inbp, outbp;
     int spectCt;
+    int saveBufPtr, saveBufCt;
 
     public void start() {
     	initLoop();
@@ -69,14 +71,27 @@ public class PlayThread {
 			fbufRi[i] = rightIn.get(i2);
             i = (i+1) & fbufmask;
 		}
-    	loop();
-    	// TODO don't assume that left, right are same size as saveBufL
-    	if (saveBufL != null) {
-    		for (i = 0; i != saveBufL.length; i++) {
-    			leftOut.set (i, saveBufL[i]);
-    			rightOut.set(i, saveBufR[i]);
+		int outi = 0;
+    	if (saveBufCt > 0) {
+    		if (saveBufCt-saveBufPtr > leftIn.length())
+    			sim.console("fail1");
+    		for (i = saveBufPtr; i != saveBufCt; i++, outi++) {
+    			leftOut.set (outi, saveBufL[i]);
+    			rightOut.set(outi, saveBufR[i]);
     		}
-//    		sim.console("process " + left.length() + " " + saveBufL.length);
+    		saveBufCt = saveBufPtr = 0;
+    	}
+    	loop();
+    	if (saveBufCt > 0) {
+    		if (saveBufPtr > 0)
+    			sim.console("fail2");
+    		for (i = saveBufPtr; i != saveBufCt && outi != leftIn.length(); i++, outi++) {
+    			leftOut.set (outi, saveBufL[i]);
+    			rightOut.set(outi, saveBufR[i]);
+    		}
+    		saveBufPtr = i;
+    		if (saveBufPtr == saveBufCt)
+    			saveBufCt = saveBufPtr = 0;
     	}
     }
     
@@ -112,7 +127,7 @@ public class PlayThread {
         	
             //System.out.println("nf " + newFilter + " " +(inbp-outbp));
             if (newFilter != null) {
-            	sim.console("newfilter");
+//            	sim.console("newfilter");
                 gainCounter = 0;
                 maxGain = true;
                 if (wform instanceof SweepWaveform ||
@@ -134,7 +149,7 @@ public class PlayThread {
                 return;
             short ib[] = wform.buffer;
             
-            useConvolve = false; // TODO make this true?
+//            useConvolve = false; // TODO make this true?
 
             int i = inbp;
             int i2;
@@ -295,6 +310,7 @@ public class PlayThread {
         if (saveBufL == null || saveBufL.length < outlen) {
             saveBufL = new double[outlen];
             saveBufR = new double[outlen];
+            saveBufPtr = saveBufCt = 0;
         }
         int i, i2;
         while (true) {
@@ -304,7 +320,7 @@ public class PlayThread {
                 double qi = (fbufLo[i]*outputGain);
                 if (qi > max)  max = qi;
                 if (qi < -max) max = -qi;
-                saveBufL[i2] = qi;
+                saveBufL[i2+saveBufCt] = qi;
                 i = (i+1) & fbufmask;
             }
             i = outbp;
@@ -312,7 +328,7 @@ public class PlayThread {
                 double qi = (fbufRo[i]*outputGain);
                 if (qi > max)  max = qi;
                 if (qi < -max) max = -qi;
-                saveBufR[i2] = qi;
+                saveBufR[i2+saveBufCt] = qi;
                 i = (i+1) & fbufmask;
             }
             // if we're getting overflow, adjust the gain
@@ -341,5 +357,6 @@ public class PlayThread {
             return;
         outbp = i;
         spectCt += outlen;
+        saveBufCt += outlen;
     }
 }

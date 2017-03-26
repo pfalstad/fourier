@@ -191,6 +191,7 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 	DockLayoutPanel layoutPanel;
 	VerticalPanel verticalPanel;
 	AbsolutePanel absolutePanel;
+	AboutBox aboutBox;
 	Canvas cv;
 	Context2d cvcontext;
 	Canvas backcv;
@@ -358,8 +359,13 @@ public class DFilterSim implements MouseDownHandler, MouseMoveHandler,
 		
         MenuBar mb = new MenuBar();
         MenuBar m = new MenuBar(true);
-        m.addItem(exitItem = getMenuItem("Exit", new MyCommand("file", "exit")));
-//        mb.addItem("File", m);
+//        m.addItem(exitItem = getMenuItem("Exit", new MyCommand("file", "exit")));
+        m.addItem(getMenuItem("About", new Command() {
+        	public void execute() {
+                aboutBox = new AboutBox(versionString);
+        	}
+        }));
+        mb.addItem("File", m);
         m = new MenuBar(true);
         m.addItem(freqCheckItem = getCheckItem("Frequency Response", true));
         m.addItem(phaseCheckItem = getCheckItem("Phase Response", false));

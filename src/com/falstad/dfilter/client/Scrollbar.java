@@ -124,6 +124,7 @@ public class Scrollbar extends  Composite implements
 		   }
 
 	void draw() {
+	    g.setFillStyle("#ffffff");
 		if (enabled)
 			g.setStrokeStyle("#000000");
 		else
