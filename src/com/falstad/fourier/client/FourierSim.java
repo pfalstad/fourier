@@ -559,16 +559,6 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         return mi;
     }
 
-    CheckboxMenuItem getCheckItem(String s, boolean b) {
-    	Command cmd = new Command() {
-    		public void execute() { FourierSim.theSim.checkMenuItemClicked(); }
-    	};
-        CheckboxMenuItem mi = new CheckboxMenuItem(s, cmd);
-        mi.setState(b);
-//        mi.addItemListener(this)
-        return mi;
-    }
-
     void checkMenuItemClicked() {
         filterChanged = true;
         handleResize();
@@ -1376,8 +1366,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     }
 
     void scrollbarMoved() {
-//    	setupFilter();
-//    	setInputW();
+    	updateSound();
     }
     
     

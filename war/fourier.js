@@ -5,7 +5,7 @@ var context;
 var NOISE_FACTOR = .5;
 
 function Player() {
-	this.BUFFER_SIZE = 16384; // 2048;
+	this.BUFFER_SIZE = 2048; // 16384;
 
 	this.isPlaying = false;
 	this.isNoise = true;

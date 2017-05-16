@@ -68,35 +68,15 @@ public class PlayThread {
 
     void process(JsArrayNumber leftIn, JsArrayNumber rightIn, JsArrayNumber leftOut, JsArrayNumber rightOut) {
     	int i = inbp;
-    	int i2;
-    	sim.console("process " + leftIn.length());
-		for (i2 = 0; i2 != leftIn.length(); i2++) {
-			fbufLi[i] = leftIn.get(i2);
-			fbufRi[i] = rightIn.get(i2);
-            i = (i+1) & fbufmask;
-		}
 		int outi = 0;
-    	if (saveBufCt > 0) {
-    		if (saveBufCt-saveBufPtr > leftIn.length())
-    			sim.console("fail1");
-    		for (i = saveBufPtr; i != saveBufCt; i++, outi++) {
-    			leftOut.set (outi, saveBufL[i]);
-    			rightOut.set(outi, saveBufR[i]);
-    		}
-    		saveBufCt = saveBufPtr = 0;
-    	}
     	loop();
-    	if (saveBufCt > 0) {
-    		if (saveBufPtr > 0)
-    			sim.console("fail2");
-    		for (i = saveBufPtr; i != saveBufCt && outi != leftIn.length(); i++, outi++) {
-    			leftOut.set (outi, saveBufL[i]);
-    			rightOut.set(outi, saveBufR[i]);
+    		for (i = inbp; i != playfunc.length && outi != leftIn.length(); i++, outi++) {
+    			leftOut.set (outi, playfunc[i]);
+    			rightOut.set(outi, playfunc[i]);
     		}
-    		saveBufPtr = i;
-    		if (saveBufPtr == saveBufCt)
-    			saveBufCt = saveBufPtr = 0;
-    	}
+    		inbp = i;
+    		if (inbp >= playfunc.length)
+    			inbp = 0;
     }
     
     void initLoop() {
@@ -136,7 +116,7 @@ public class PlayThread {
             playfunc = new double[playSampleCount*2];
             int i;
             int terms = sim.termBar.getValue();
-            double bstep = 2*pi*sim.getFreq()/sim.rate;
+            double bstep = 2*pi*sim.getFreq()/sim.sampleRate;
             double mx = .2;
             changed = false;
             for (i = 1; i != terms; i++) {
@@ -164,8 +144,6 @@ public class PlayThread {
             	func[i] = playfunc[i*2]*mult;
             playfunc = func;
         }
-
-        doOutput(playfunc.length);
     }
 
     double impulseBuf[], convolveBuf[];
