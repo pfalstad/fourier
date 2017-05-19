@@ -215,13 +215,6 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 	static final int MAXVERTICALPANELWIDTH = 166;
 	static final int POSTGRABSQ = 16;
 
-	final Timer timer = new Timer() {
-		public void run() {
-			updateRipple();
-		}
-	};
-	final int FASTTIMER = 33; // 16;
-
 	int getrand(int x) {
 		return random.nextInt(x);
 	}
@@ -432,7 +425,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         verticalPanel.add(new Label("Playing Frequency"));
         freqBar = new Scrollbar(Scrollbar.HORIZONTAL, 251, 1, -100, 500,
     			new Command() {
-    		public void execute() { scrollbarMoved(); } });
+    		public void execute() { scrollbarMoved(); freqAdjusted = true; } });
         	verticalPanel.add(freqBar);
         	verticalPanel.add(new Label("http://www.falstad.com"));
 
@@ -495,7 +488,8 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 		
 		setCanvasSize();
 		layoutPanel.add(cv);
-		timer.scheduleRepeating(FASTTIMER);
+//		timer.scheduleRepeating(FASTTIMER);
+		repaint();
 	}
 
     // install touch handlers to handle touch events properly on mobile devices.
@@ -1220,7 +1214,19 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         repaint();
     }
 
-    void repaint() {}
+    Timer paintTimer;
+    
+    void repaint() {
+    	if (paintTimer == null) {
+    		paintTimer = new Timer() {
+    			public void run() {
+    				updateRipple();
+    				paintTimer = null;
+    			}
+    		};
+    		paintTimer.schedule(30);
+    	}
+    }
     
     void editPhase(int x, int y) {
         if (selectedCoef == -1)
@@ -1367,6 +1373,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 
     void scrollbarMoved() {
     	updateSound();
+    	repaint();
     }
     
     

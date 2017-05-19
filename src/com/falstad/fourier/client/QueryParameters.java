@@ -37,7 +37,7 @@ public class QueryParameters
             {
                 String[] pair = nameValues[i].split("=");
 
-                map.put(pair[0], URL.decode(pair[1]));
+                map.put(URL.decode(pair[0]), URL.decode(pair[1]));
             }
         }
     }
