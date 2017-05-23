@@ -126,6 +126,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     Checkbox logCheck;
     Scrollbar termBar;
     Scrollbar freqBar;
+    CheckboxMenuItem expansionCheckItem;
     
     MenuItem exitItem;
     
@@ -209,7 +210,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     public static final int halfSampleCount = sampleCount/2;
     public static final double halfSampleCountFloat = sampleCount/2;
     final int rate = 44100;
-    final int playSampleCount = 16384;
+    final int playSampleCount = 131072; // 16384;
 
 	static final int MENUBARHEIGHT = 30;
 	static final int MAXVERTICALPANELWIDTH = 166;
@@ -225,7 +226,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 		height = (int) RootLayoutPanel.get().getOffsetHeight();
 		height = height - MENUBARHEIGHT;   // put this back in if we add a menu bar
 		width = width - MAXVERTICALPANELWIDTH;
-		width = height = (width < height) ? width : height;
+//		width = height = (width < height) ? width : height;
 		winSize = new Dimension(width, height);
 		verticalPanelWidth = fullwidth-width;
 		if (layoutPanel != null)
@@ -389,6 +390,27 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         }));
         mb.addItem("File", m);
         
+        MenuBar am = new MenuBar(true);
+        am.addItem(getMenuItem("Reverse Polarity", new Command() {
+        	public void execute() { reversePolarity(); }
+        }));
+        am.addItem(getMenuItem("Reverse Time", new Command() {
+        	public void execute() { reverseTime(); }
+        }));
+        am.addItem(getMenuItem("Only Even", new Command() {
+        	public void execute() { onlyEven(1); }
+        }));
+        am.addItem(getMenuItem("Only Odd", new Command() {
+        	public void execute() { onlyEven(0); }
+        }));
+        mb.addItem("Actions", am);
+        
+        MenuBar om = new MenuBar(true);
+        om.addItem(expansionCheckItem = new CheckboxMenuItem("Show Full Expansion", new Command() {
+        	public void execute() { repaint(); }
+        }));
+        mb.addItem("Options", om);
+        
         layoutPanel.addNorth(mb, MENUBARHEIGHT);
         layoutPanel.addEast(verticalPanel, verticalPanelWidth);
         RootLayoutPanel.get().add(layoutPanel);
@@ -423,7 +445,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         if (mustShow("Terms"))
         	verticalPanel.add(termBar);
         verticalPanel.add(new Label("Playing Frequency"));
-        freqBar = new Scrollbar(Scrollbar.HORIZONTAL, 251, 1, -100, 500,
+        freqBar = new Scrollbar(Scrollbar.HORIZONTAL, 251*2, 1, -123*2, 500*2, // was -100
     			new Command() {
     		public void execute() { scrollbarMoved(); freqAdjusted = true; } });
         	verticalPanel.add(freqBar);
@@ -570,7 +592,6 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
             return;
         if (magPhaseCheck == null)
         	return;
-        int ct = 1;
         int margin = 20;
         Dimension d = winSize;
         int pheight = (d.height-margin*2)/3;
@@ -593,6 +614,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         viewMutes = new View(0, pmy, d.width, h);
         viewSolos = new View(0, pmy+h, d.width, h);
         //System.out.println(viewMutes + " " + viewSolos + " " +d.height);
+        repaint();
     }
 
     void doBeats() {
@@ -603,7 +625,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         }
         func[sampleCount] = func[0];
         transform();
-        freqBar.setValue(-100);
+        freqBar.setValue(-100*2/3-7);
     }
 
     void doLoudSoft() {
@@ -763,6 +785,34 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         transform();
     }
 
+    void reversePolarity() {
+    	int i;
+    	for (i = 0; i != sampleCount; i++)
+    		func[i] *= -1;
+    	transform();
+    	repaint();
+    }
+    
+    void reverseTime() {
+    	int i;
+    	for (i = 0; i != sampleCount/2; i++) {
+    		double q = func[i];
+    		func[i] = func[sampleCount-1-i];
+    		func[sampleCount-1-i] = q;
+    	}
+    	transform();
+    	repaint();
+    }
+    
+    void onlyEven(int x) {
+        int i;
+        int terms = termBar.getValue();
+        for (i = x; i < terms; i += 2)
+        	magcoef[i] = 0;
+        doSetFunc();
+    	repaint();
+    }
+
     void doResample() {
         int x, i;
         if (resampleCount == 0)
@@ -798,7 +848,10 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     int dfreq0;
     double getFreq() {
         // get approximate freq from slider (log scale)
-        double freq = 27.5*Math.exp(freqBar.getValue()*.004158883084*2);
+    	int v = freqBar.getValue();
+    	if (v < 0)
+    		v *= 3;
+        double freq = 27.5*Math.exp(v*.004158883084);
         // get offset into FFT array for frequency selected (as close as possible;
         // it can't be exact because we use an FFT to generate the wave, and so the
         // frequency choices must be integer multiples of a base frequency)
@@ -808,7 +861,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     }
 
     void transform() {
-        int x, y;
+        int y;
         double data[] = new double[sampleCount*2];
         int i;
         for (i = 0; i != sampleCount; i++)
@@ -929,78 +982,14 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
             }
         }
         int texty = viewFunc.height+10;
-        if (selectedCoef != -1) {
+        if (selectedCoef != -1)
+        	showHarmonic(g, texty);
+        else if (freqAdjusted) {
+        	// adjusting frequency bar, show new fundamental frequency
             g.setColor(Color.yellow);
-            ox = -1;
-            double phase = phasecoef[selectedCoef];
-            int x;
-            double n = selectedCoef*2*pi/periodWidth;
-            int dx = periodWidth/2;
-            double mag = magcoef[selectedCoef];
-            if (!magPhaseCheck.getState()) {
-                if (selection == SEL_MAG) {
-                    mag *= -Math.sin(phase);
-                    phase = -pi/2;
-                } else {
-                    mag *= Math.cos(phase);
-                    phase = 0;
-                }
-            }
-            ymult *= mag;
-            if (!dragging) {
-                for (i = 0; i != sampleCount+1; i++) {
-                    x = periodWidth * i / sampleCount;
-                    double dy = Math.cos(
-                            step*(i-halfSampleCount)*selectedCoef+phase);
-                    int y = midy - (int) (ymult * dy);
-                    if (ox != -1) {
-                        g.drawLine(ox, oy, x, y);
-                        g.drawLine(ox+periodWidth, oy,   x+periodWidth,   y);
-                        g.drawLine(ox+periodWidth*2, oy, x+periodWidth*2, y);
-                    }
-                    ox = x;
-                    oy = y;
-                }
-            }
-            if (selectedCoef > 0) {
-                int f = (int) (getFreq() * selectedCoef);
-                centerString(g, f +
-                             ((f > rate/2) ? " Hz (filtered)" : " Hz"),
-                             texty);
-            }
-            if (selectedCoef != -1) {
-                String harm;
-                if (selectedCoef == 0)
-                    harm = showFormat.format(mag) + "";
-                else {
-                    String func = "cos";
-                    if (!magPhaseCheck.getState() && selection == SEL_MAG)
-                        func = "sin";
-                    if (selectedCoef == 1)
-                        harm = showFormat.format(mag) + " " + func + "(x";
-                    else
-                        harm = showFormat.format(mag) +
-                            " " + func + "(" + selectedCoef + "x";
-                    if (!magPhaseCheck.getState() || phase == 0)
-                        harm += ")";
-                    else {
-                        harm += (phase < 0) ? " - " : " + ";
-                        harm += showFormat.format(Math.abs(phase)) + ")";
-                    }
-                    if (logCheck.getState()) {
-                        harm += "   (" +
-                            showFormat2.format(20*Math.log(mag)/Math.log(10)) +
-                            " dB)";
-                    }
-                }
-                centerString(g, harm, texty+15);
-            }
-        }
-        if (selectedCoef == -1 && freqAdjusted) {
-            int f = (int) getFreq();
-            g.setColor(Color.yellow);
-            centerString(g, f + " Hz", texty);
-        }
+            centerString(g, formatFreq(getFreq()) + " Hz", texty);
+        } else if (expansionCheckItem.getState())
+        	showExpansion(g, texty);
         freqAdjusted = false;
         int termWidth = getTermWidth();
         
@@ -1100,6 +1089,12 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 		cvcontext.drawImage(backcontext.getCanvas(), 0.0, 0.0);
     }
 
+    String formatFreq(double f) {
+    	if (f >= 1000)
+    		return "" + (int)f;
+    	return showFormat2.format(f);
+    }
+    
     double showMag(int n) {
         double m = magcoef[n];
         if (!logCheck.getState() || n == 0)
@@ -1115,6 +1110,130 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         if (m == 0)
             return 0;
         return Math.exp(6*(m-1));
+    }
+    
+    void showHarmonic(Graphics g, int texty) {
+        g.setColor(Color.yellow);
+        int periodWidth = viewFunc.periodWidth;
+        int ox = -1;
+        double phase = phasecoef[selectedCoef];
+        int x;
+        double mag = magcoef[selectedCoef];
+        if (!magPhaseCheck.getState()) {
+            if (selection == SEL_MAG) {
+                mag *= -Math.sin(phase);
+                phase = -pi/2;
+            } else {
+                mag *= Math.cos(phase);
+                phase = 0;
+            }
+        }
+        double ymult = viewFunc.ymult;
+        ymult *= mag;
+        int i, oy = 0;
+        int midy = viewFunc.midy;
+        if (!dragging) {
+            for (i = 0; i != sampleCount+1; i++) {
+                x = periodWidth * i / sampleCount;
+                double dy = Math.cos(
+                        step*(i-halfSampleCount)*selectedCoef+phase);
+                int y = midy - (int) (ymult * dy);
+                if (ox != -1) {
+                    g.drawLine(ox, oy, x, y);
+                    g.drawLine(ox+periodWidth, oy,   x+periodWidth,   y);
+                    g.drawLine(ox+periodWidth*2, oy, x+periodWidth*2, y);
+                }
+                ox = x;
+                oy = y;
+            }
+        }
+        if (selectedCoef > 0) {
+        	double f = (getFreq() * selectedCoef);
+            centerString(g, formatFreq(f) +
+                         ((f > rate/2) ? " Hz (filtered)" : " Hz"),
+                         texty);
+        }
+        if (selectedCoef != -1) {
+            String harm;
+            if (selectedCoef == 0)
+                harm = showFormat.format(mag) + "";
+            else {
+                String func = "cos";
+                if (!magPhaseCheck.getState() && selection == SEL_MAG)
+                    func = "sin";
+                if (selectedCoef == 1)
+                    harm = showFormat.format(mag) + " " + func + "(x";
+                else
+                    harm = showFormat.format(mag) +
+                        " " + func + "(" + selectedCoef + "x";
+                if (!magPhaseCheck.getState() || phase == 0)
+                    harm += ")";
+                else {
+                    harm += (phase < 0) ? " - " : " + ";
+                    harm += showFormat.format(Math.abs(phase)) + ")";
+                }
+                if (logCheck.getState()) {
+                    harm += "   (" +
+                        showFormat2.format(20*Math.log(mag)/Math.log(10)) +
+                        " dB)";
+                }
+            }
+            centerString(g, harm, texty+15);
+        }
+    }
+        
+    void showExpansion(Graphics g, int texty) {
+        String str = "";
+        if (Math.abs(magcoef[0]) >= .00001)
+        	str = showFormat.format(magcoef[0]);
+        String lastStr = str;
+        int i;
+        FontMetrics fm = g.getFontMetrics();
+        int terms = termBar.getValue();
+        for (i = 1; i != terms; i++) {
+        	int j;
+        	int jmax = (magPhaseCheck.getState() ? 1 : 2);
+        	for (j = 0; j != jmax; j++) {
+        		double mag = magcoef[i];
+        		double phase = phasecoef[i];
+                if (!magPhaseCheck.getState()) {
+                	// convert mag/phase to sin/cos
+                    if (j == 1) {
+                        mag *= -Math.sin(phase);
+                        phase = -pi/2;
+                    } else {
+                        mag *= Math.cos(phase);
+                        phase = 0;
+                    }
+                }
+                if (Math.abs(mag) < .00001)
+                	continue;
+                if (mag >= 0 && str.length() > 0)
+                	str += "+";
+        		String func = (j == 0) ? "cos" : "sin";
+        		if (mag != 1)
+        			str += showFormat.format(mag);
+        		str += func;
+        		if (i == 1)
+        			str += "(x";
+        		else
+        			str += "(" + i + "x";
+        		if (!magPhaseCheck.getState() || phase == 0)
+        			str += ")";
+        		else {
+        			str += (phase < 0) ? "-" : "+";
+        			str += showFormat.format(Math.abs(phase)) + ")";
+        		}
+        	}
+        	// is string too long for window?  if so, remove last harmonic and quit
+        	if (fm.stringWidth(str) > winSize.width) {
+        		str = lastStr;
+        		break;
+        	}
+        	lastStr = str + "+...";
+        }
+        g.setColor(Color.yellow);
+        centerString(g, str, texty+15);
     }
     
     int getTermWidth() {
@@ -1517,6 +1636,9 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 	@Override
 	public void onMouseOut(MouseOutEvent event) {
 		dragging = false;
+		selection = SEL_NONE;
+		selectedCoef = -1;
+		repaint();
 	}
 
 	@Override
