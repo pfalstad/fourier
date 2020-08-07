@@ -135,7 +135,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     boolean mutes[], solos[], hasSolo;
     static final double pi = 3.14159265358979323846;
     double func[];
-    int maxTerms = 160;
+    int maxTerms = 250; // 160;
     int selectedCoef;
     static final int SEL_NONE = 0;
     static final int SEL_FUNC = 1;
