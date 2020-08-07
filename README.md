@@ -1,7 +1,7 @@
-# dfilter
-DFilter, javascript version
+# fourier
+Fourier, javascript version
 
-Source for http://www.falstad.com/dfilter/
+Source for http://www.falstad.com/fourier/
 
 ## License
 
