@@ -22,11 +22,12 @@ public class PlayThread {
     int gainCounter = 0;
 
     PlayThread() {
+    	sim.console("playthread");
     	shutdownRequested = false;
     	sim = FourierSim.theSim;
     }
     void requestShutdown() {
-//    	sim.console("requestshutdown");
+    	sim.console("requestshutdown");
     	shutdownRequested = true;
     	sim.playThread = null;
     	FourierSim.stopSound();
@@ -37,6 +38,7 @@ public class PlayThread {
     }
     
     void openLine() {
+    	sim.console("openline");
         try {
             stereo = true;
             int bufsz = FourierSim.getPower2(sim.sampleRate/4);
@@ -54,6 +56,7 @@ public class PlayThread {
 
     public void start() {
     	initLoop();
+    	sim.console("start");
     	FourierSim.startSound();
     }
     
@@ -70,13 +73,13 @@ public class PlayThread {
     	int i = inbp;
 		int outi = 0;
     	loop();
-    		for (i = inbp; i != playfunc.length && outi != leftIn.length(); i++, outi++) {
-    			leftOut.set (outi, playfunc[i]);
-    			rightOut.set(outi, playfunc[i]);
-    		}
-    		inbp = i;
-    		if (inbp >= playfunc.length)
-    			inbp = 0;
+    	for (i = inbp; i != playfunc.length && outi != leftIn.length(); i++, outi++) {
+    		leftOut.set (outi, playfunc[i]);
+    		rightOut.set(outi, playfunc[i]);
+    	}
+    	inbp = i;
+    	if (inbp >= playfunc.length)
+    		inbp = 0;
     }
     
     void initLoop() {
@@ -113,7 +116,8 @@ public class PlayThread {
         boolean hasSolo = sim.hasSolo;
         int dfreq0 = sim.dfreq0;
         if (playfunc == null || changed) {
-            playfunc = new double[playSampleCount*2];
+        	FourierSim.console("new func");
+            double newfunc[] = new double[playSampleCount*2];
             int i;
             int terms = sim.termBar.getValue();
             double bstep = 2*pi*sim.getFreq()/sim.sampleRate;
@@ -128,21 +132,22 @@ public class PlayThread {
                 if (dfreq >= playSampleCount)
                     break;
                 int sgn = (i & 1) == 1 ? -1 : 1;
-                playfunc[dfreq]   =  sgn*magcoef[i]*Math.cos(phasecoef[i]);
-                playfunc[dfreq+1] = -sgn*magcoef[i]*Math.sin(phasecoef[i]);
+                newfunc[dfreq]   =  sgn*magcoef[i]*Math.cos(phasecoef[i]);
+                newfunc[dfreq+1] = -sgn*magcoef[i]*Math.sin(phasecoef[i]);
             }
-            playFFT.transform(playfunc, true);
+            playFFT.transform(newfunc, true);
             for (i = 0; i != playSampleCount; i++) {
-                double dy = playfunc[i*2];
+                double dy = newfunc[i*2];
                 if (dy > mx)  mx = dy;
                 if (dy < -mx) mx = -dy;
             }
             
-            double func[] = new double[playSampleCount];
+            double newfunc2[] = new double[playSampleCount];
             double mult = 1./mx;
             for (i = 0; i != playSampleCount; i++)
-            	func[i] = playfunc[i*2]*mult;
-            playfunc = func;
+            	newfunc2[i] = newfunc[i*2]*mult;
+            playfunc = newfunc2;
+            sim.console("done");
         }
     }
 

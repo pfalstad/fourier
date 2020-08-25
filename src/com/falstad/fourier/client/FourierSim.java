@@ -66,8 +66,11 @@ import com.google.gwt.i18n.client.NumberFormat;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Command;
+import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
 import com.google.gwt.user.client.Event.NativePreviewHandler;
+
+import static com.google.gwt.event.dom.client.KeyCodes.*; 
 
 import java.util.HashMap;
 import java.util.Random;
@@ -169,6 +172,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     int pause;
     PlayThread playThread;
     double spectrumBuf[];
+    double rms;
     boolean filterChanged;
     HashMap<String,String> showTable;
 
@@ -201,9 +205,9 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 	DialogBox dialogBox;
 	int verticalPanelWidth;
 	String startLayoutText = null;
-	String versionString = "1.0";
+	String versionString = "1.1";
 	static FourierSim theSim;
-    NumberFormat showFormat, showFormat2;
+    NumberFormat showFormat, showFormat2, rmsFormat;
 
     public static final int sampleCount = 1024;
     static final double step = 2 * pi / sampleCount;
@@ -369,7 +373,10 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         phasecoef = new double[maxTerms];
         mutes = new boolean[maxTerms];
         solos = new boolean[maxTerms];
+        
+        // we have func[0] == func[sampleCount] to make drawing function slightly easier
         func = new double[sampleCount+1];
+        
         random = new Random();
         fft = new FFT(sampleCount);
 
@@ -498,6 +505,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 
         showFormat=NumberFormat.getFormat("####.#####");
         showFormat2=NumberFormat.getFormat("####.##");
+		rmsFormat=NumberFormat.getFormat("####.###");
 		
 		cv.addMouseMoveHandler(this);
 		cv.addMouseDownHandler(this);
@@ -505,6 +513,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 		cv.addMouseUpHandler(this);
         cv.addMouseWheelHandler(this);
         cv.addClickHandler(this);
+		Event.addNativePreviewHandler(this);        
         doTouchHandlers(cv.getCanvasElement());
 //		cv.addDomHandler(this,  ContextMenuEvent.getType());
 		
@@ -763,6 +772,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         for (i = 0; i != sampleCount; i++)
             func[i] = data[i*2];
         func[sampleCount] = func[0];
+        calcRMS();
         updateSound();
     }
 
@@ -771,6 +781,14 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
             playThread.soundChanged();
     }
     
+    void calcRMS() {
+    	rms = 0;
+    	int i;
+    	for (i = 0; i != sampleCount; i++)
+    		rms += func[i]*func[i];
+    	rms = Math.sqrt(rms/sampleCount);
+    }
+
     void doClip() {
         int x;
         double mult = 1.2;
@@ -888,6 +906,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
             }
             // System.out.print("phasecoef " + phasecoef[y] + "\n");
         }
+        calcRMS();
         updateSound();
     }
 
@@ -916,7 +935,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 
     Font font;
     
-    public void updateRipple() {
+    public void updateFourier() {
 		Graphics g=new Graphics(backcontext);
 	
 		if (font == null)
@@ -981,12 +1000,14 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
                 oy = y;
             }
         }
-        int texty = viewFunc.height+10;
+        int texty = viewFunc.height+15;
+        g.setColor(Color.white);
+        centerString(g, "RMS " + rmsFormat.format(rms), viewFunc.height);
+        g.setColor(Color.yellow);
         if (selectedCoef != -1)
         	showHarmonic(g, texty);
         else if (freqAdjusted) {
         	// adjusting frequency bar, show new fundamental frequency
-            g.setColor(Color.yellow);
             centerString(g, formatFreq(getFreq()) + " Hz", texty);
         } else if (expansionCheckItem.getState())
         	showExpansion(g, texty);
@@ -1072,13 +1093,13 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
                 g.setColor(i == selectedCoef ? Color.yellow : Color.white);
                 if (hasSolo && !solos[i])
                     g.setColor(Color.gray);
-                String pm = "-";
+                String pm = "m";
                 if (mutes[i])
                     pm = "M";
                 int w = fm.stringWidth(pm);
                 g.drawString(pm, t-w/2, y);
                 y = viewSolos.y + fm.getAscent();
-                pm = "-";
+                pm = "s";
                 if (solos[i])
                     pm = "S";
                 w = fm.stringWidth(pm);
@@ -1149,9 +1170,14 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         }
         if (selectedCoef > 0) {
         	double f = (getFreq() * selectedCoef);
-            centerString(g, formatFreq(f) +
-                         ((f > rate/2) ? " Hz (filtered)" : " Hz"),
-                         texty);
+        	String s = formatFreq(f) + " Hz";
+        	if (f > rate/2)
+        		s += " (filtered)";
+        	else if (mutes[selectedCoef])
+        		s += " (muted)";
+        	else if (hasSolo)
+        		s += (solos[selectedCoef]) ? " (solo)" : " (muted)";
+            centerString(g, s, texty);
         }
         if (selectedCoef != -1) {
             String harm;
@@ -1292,6 +1318,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
             magcoef[c] = Math.sqrt(m1*m1+m2*m2);
             phasecoef[c] = Math.atan2(-m1, m2);
         }
+        calcRMS();
         updateSound();
         repaint();
     }
@@ -1339,7 +1366,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     	if (paintTimer == null) {
     		paintTimer = new Timer() {
     			public void run() {
-    				updateRipple();
+    				updateFourier();
     				paintTimer = null;
     			}
     		};
@@ -1372,6 +1399,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
             phasecoef[c] = Math.atan2(-m1, m2);
             updateSound();
         }
+        calcRMS();
         repaint();
     }
 
@@ -1387,9 +1415,13 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     void editSolos(MouseEvent e, int x, int y) {
 //        if (e.getID() != MouseEvent.MOUSE_PRESSED)
 //            return;
-        if (selectedCoef == -1)
+    	toggleSolo(selectedCoef);
+    }
+    
+    void toggleSolo(int coef) {
+        if (coef == -1)
             return;
-        solos[selectedCoef] = !solos[selectedCoef];
+        solos[coef] = !solos[coef];
         int terms = termBar.getValue();
         hasSolo = false;
         int i;
@@ -1492,6 +1524,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 
     void scrollbarMoved() {
     	updateSound();
+    	calcRMS();
     	repaint();
     }
     
@@ -1642,9 +1675,22 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 	}
 
 	@Override
-	public void onPreviewNativeEvent(NativePreviewEvent event) {
-		// TODO Auto-generated method stub
-
+	public void onPreviewNativeEvent(NativePreviewEvent e) {
+		int t=e.getTypeInt();
+		int code=e.getNativeEvent().getKeyCode();
+		if ((t & Event.ONKEYDOWN)!=0) {
+			if (code >= KEY_ZERO && code <= KEY_NINE) {
+				int coef = code-KEY_ZERO;
+				if (coef == 0)
+					coef = 10;
+		        if (e.getNativeEvent().getShiftKey())
+		        	toggleSolo(coef);
+		        else
+		        	mutes[coef] = !mutes[coef];
+		        updateSound();
+		        repaint();
+			}
+		}
 	}
 
 	@Override
