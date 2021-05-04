@@ -98,7 +98,6 @@ public class FFT {
             // skip1 = length of subarray after combination
             skip2 = skip1 >> 1;
             tabskip >>= 1;
-            for (i = 0; i != 1000; i++);
             // for each subarray
             for (i = 0; i < size2; i += skip1) {
                 ix = 0;
