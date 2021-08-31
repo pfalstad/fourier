@@ -114,7 +114,7 @@ public class PlayThread {
         double magcoef[] = sim.magcoef;
         double phasecoef[] = sim.phasecoef;
         boolean hasSolo = sim.hasSolo;
-        int dfreq0 = sim.dfreq0;
+        int dfreq0 = (int)sim.dfreq0;
         if (playfunc == null || changed) {
         	FourierSim.console("new func");
             double newfunc[] = new double[playSampleCount*2];
@@ -143,7 +143,9 @@ public class PlayThread {
             }
             
             double newfunc2[] = new double[playSampleCount];
-            double mult = 1./mx;
+            
+            // don't do full volume because that's too loud
+            double mult = .25/mx;
             for (i = 0; i != playSampleCount; i++)
             	newfunc2[i] = newfunc[i*2]*mult;
             playfunc = newfunc2;

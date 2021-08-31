@@ -157,6 +157,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     double inputW;
     double waveGain = 1./65536;
     double outputGain = 1;
+    double maxFreq = 1760;
     int sampleRate;
     int xpoints[] = new int[4];
     int ypoints[] = new int[4];
@@ -355,6 +356,9 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
             state = qp.getValue("state");
             if (state == null)
             	state = "";
+            String maxFreqStr = qp.getValue("maxFreq");
+            if (maxFreqStr != null)
+            	maxFreq = Double.parseDouble(maxFreqStr);
         } catch (Exception e) { }
 
 		cv = Canvas.createIfSupported();
@@ -863,17 +867,17 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         quantizeCount /= 2;
     }
 
-    int dfreq0;
+    long dfreq0;
     double getFreq() {
         // get approximate freq from slider (log scale)
     	int v = freqBar.getValue();
     	if (v < 0)
     		v *= 3;
-        double freq = 27.5*Math.exp(v*.004158883084);
+        double freq = maxFreq*Math.exp(v*.004158883084)/64;
         // get offset into FFT array for frequency selected (as close as possible;
         // it can't be exact because we use an FFT to generate the wave, and so the
         // frequency choices must be integer multiples of a base frequency)
-        dfreq0 = ((int)(freq*(double) playSampleCount/rate))*2;
+        dfreq0 = ((long)(freq*(double) playSampleCount/rate))*2;
         // get exact frequency being played
         return rate*dfreq0/(playSampleCount*2.);
     }
@@ -1008,7 +1012,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         	showHarmonic(g, texty);
         else if (freqAdjusted) {
         	// adjusting frequency bar, show new fundamental frequency
-            centerString(g, formatFreq(getFreq()) + " Hz", texty);
+            centerString(g, formatFreq(getFreq()), texty);
         } else if (expansionCheckItem.getState())
         	showExpansion(g, texty);
         freqAdjusted = false;
@@ -1111,9 +1115,15 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
     }
 
     String formatFreq(double f) {
+    	if (f >= 1e9)
+    		return showFormat2.format(f/1e9) + " GHz";
+    	if (f >= 1e6)
+    		return showFormat2.format(f/1e6) + " MHz";
+    	if (f >= 1e5)
+    		return showFormat2.format(f/1e3) + " kHz";
     	if (f >= 1000)
-    		return "" + (int)f;
-    	return showFormat2.format(f);
+    		return (int)f + " Hz";
+    	return showFormat2.format(f) + " Hz";
     }
     
     double showMag(int n) {
@@ -1170,7 +1180,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
         }
         if (selectedCoef > 0) {
         	double f = (getFreq() * selectedCoef);
-        	String s = formatFreq(f) + " Hz";
+        	String s = formatFreq(f);
         	if (f > rate/2)
         		s += " (filtered)";
         	else if (mutes[selectedCoef])
