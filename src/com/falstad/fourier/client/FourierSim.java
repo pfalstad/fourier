@@ -206,7 +206,7 @@ public class FourierSim implements MouseDownHandler, MouseMoveHandler,
 	DialogBox dialogBox;
 	int verticalPanelWidth;
 	String startLayoutText = null;
-	String versionString = "1.1";
+	String versionString = "1.1a";
 	static FourierSim theSim;
     NumberFormat showFormat, showFormat2, rmsFormat;
 
