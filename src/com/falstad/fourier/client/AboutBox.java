@@ -52,7 +52,8 @@ public class AboutBox extends PopupPanel {
 		"<p>Originally written in Java by Paul Falstad.<br><a href=\"http://www.falstad.com/\" target=\"_blank\">http://www.falstad.com/</a></p>"+
 		"<p>Javascript conversion by Paul Falstad, based on work by Iain Sharp and Erick Maldonado.</p>"+
 
-		"<p>With contributions from Peter Kudry.</p>"+
+		"<p>Thanks to Michael Cohen for ideas and support regarding the narrowcasting and RMS features, "+
+		"and to Peter Kudry for implementation of the RMS calculation.</p>" +
 		"<p style=\"font-size:9px\">This program is free software: you can redistribute it and/or modify it "+
 		"under the terms of the GNU General Public License as published by "+
 		"the Free Software Foundation, either version 2 of the License, or "+
